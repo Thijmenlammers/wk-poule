@@ -51,9 +51,8 @@ The file contains the 16 participants digitized from
 ```
 
 Each imported participant has all 29 predictions and a tournament winner pick.
-The workbook's reviewed score interpretations are preserved exactly. Names that
-the source marks as uncertain are also kept as digitized, including the question
-mark in `Eric Toerina?`.
+The predictions originate from the workbook and include subsequent approved
+corrections. Display names use the corrected participant roster.
 
 For future incomplete forms, set an unreadable score to `null` or omit the
 prediction. Set `predictedChampion` to `null` when no champion was selected.
@@ -70,12 +69,13 @@ src/data/pool-matches.ts
 The server-side provider in `src/lib/football-api.ts` targets [football-data.org API v4](https://www.football-data.org/documentation/quickstart). Create `.env.local`:
 
 ```env
-FOOTBALL_API_URL=https://api.football-data.org/v4
 FOOTBALL_API_KEY=your_server_only_token
-FOOTBALL_COMPETITION_ID=WC
 ```
 
-The token is only read by server code and must never use a `NEXT_PUBLIC_` prefix. The provider loads:
+The token is only read by server code and must never use a `NEXT_PUBLIC_`
+prefix. The API URL defaults to `https://api.football-data.org/v4` and the
+competition defaults to `WC`; both can be overridden with the optional
+variables shown in `.env.example`. The provider loads:
 
 - `/competitions/{competitionId}/matches` for fixtures, status, live/full-time scores, kick-off times, and the season winner
 
@@ -136,7 +136,8 @@ It was downloaded from the current Semplor website asset at `semplor.com/wp-cont
 Vercel is the simplest deployment target:
 
 1. Import the repository into Vercel.
-2. Add the three football API environment variables to the project.
+2. Add `FOOTBALL_API_KEY` to the Vercel project environment variables for
+   Production (and Preview if desired).
 3. Deploy with the standard Next.js build command, `npm run build`.
 
 Any Node.js host that supports Next.js can also run:

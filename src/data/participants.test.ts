@@ -3,8 +3,27 @@ import { describe, expect, it } from "vitest";
 import { participants } from "@/data/participants";
 import { poolMatches } from "@/data/pool-matches";
 
-const WORKBOOK_DATA_SHA256 =
-  "28b17f8680c9241017be3d0239bd906369c862b3554f2447ce9f61246fc99b75";
+const APPROVED_PREDICTIONS_SHA256 =
+  "903bdc37e3ecfa211bf8c103eab3e363cb12a6d5ba429e124fe8256380da9108";
+
+const participantNames = [
+  "Willem",
+  "Addo",
+  "William",
+  "Hans",
+  "Nadine",
+  "Koen",
+  "Richard",
+  "Thijmen",
+  "Giel",
+  "Samuel",
+  "Josien",
+  "Alexandra",
+  "Jasper",
+  "Roger",
+  "Eric",
+  "Chinmay",
+];
 
 function getPrediction(participantId: string, matchIndex: number) {
   const participant = participants.find(({ id }) => id === participantId);
@@ -37,7 +56,7 @@ describe("digitized participant data", () => {
     }
   });
 
-  it("matches the complete digitized workbook dataset", () => {
+  it("matches all approved predictions and champion picks", () => {
     const canonicalData = participants
       .map((participant) => {
         const scores = participant.predictions
@@ -49,7 +68,6 @@ describe("digitized participant data", () => {
 
         return [
           participant.id.toUpperCase(),
-          participant.name,
           participant.predictedChampion,
           scores,
         ].join("|");
@@ -58,10 +76,18 @@ describe("digitized participant data", () => {
 
     const checksum = createHash("sha256").update(canonicalData).digest("hex");
 
-    expect(checksum).toBe(WORKBOOK_DATA_SHA256);
+    expect(checksum).toBe(APPROVED_PREDICTIONS_SHA256);
+  });
+
+  it("uses the corrected participant display names", () => {
+    expect(participants.map(({ name }) => name)).toEqual(participantNames);
   });
 
   it("preserves the overwritten scores accepted during review", () => {
+    expect(getPrediction("p05", 5)).toMatchObject({
+      predictedHomeScore: 1,
+      predictedAwayScore: 0,
+    });
     expect(getPrediction("p10", 3)).toMatchObject({
       predictedHomeScore: 0,
       predictedAwayScore: 1,

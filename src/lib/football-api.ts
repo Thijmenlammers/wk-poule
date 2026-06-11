@@ -8,6 +8,11 @@ import {
   fallbackTournamentWinner,
 } from "@/data/fallback-results";
 import { poolMatches } from "@/data/pool-matches";
+import {
+  DEFAULT_FOOTBALL_API_URL,
+  DEFAULT_FOOTBALL_COMPETITION_ID,
+  getFootballApiConfiguration,
+} from "@/lib/football-api-config";
 import type {
   FootballDataSnapshot,
   MatchStatus,
@@ -50,12 +55,10 @@ type FootballDataOrgMatchesResponse = {
   matches?: FootballDataOrgMatch[];
 };
 
-async function requestFootballData(url: string): Promise<ApiEnvelope> {
-  const apiKey = process.env.FOOTBALL_API_KEY;
-  if (!apiKey) {
-    throw new Error("FOOTBALL_API_KEY is not configured.");
-  }
-
+async function requestFootballData(
+  url: string,
+  apiKey: string,
+): Promise<ApiEnvelope> {
   const response = await fetch(url, {
     headers: {
       "X-Auth-Token": apiKey,
@@ -105,14 +108,7 @@ function teamName(team?: FootballDataOrgTeam) {
   return team?.shortName ?? team?.name ?? "";
 }
 
-function buildMatchesUrl() {
-  const apiUrl = process.env.FOOTBALL_API_URL?.replace(/\/$/, "");
-  const competitionId = process.env.FOOTBALL_COMPETITION_ID;
-
-  if (!apiUrl || !competitionId) {
-    throw new Error("Football API URL and competition ID are not configured.");
-  }
-
+function buildMatchesUrl(apiUrl: string, competitionId: string) {
   return `${apiUrl}/competitions/${encodeURIComponent(competitionId)}/matches`;
 }
 
@@ -120,8 +116,13 @@ class FootballDataOrgProvider implements FootballDataProvider {
   lastUpdated: string | null = null;
   private responsePromise: Promise<ApiEnvelope> | null = null;
 
+  constructor(
+    private readonly matchesUrl: string,
+    private readonly apiKey: string,
+  ) {}
+
   private async getMatchesResponse() {
-    this.responsePromise ??= requestFootballData(buildMatchesUrl());
+    this.responsePromise ??= requestFootballData(this.matchesUrl, this.apiKey);
     const response = await this.responsePromise;
     this.lastUpdated = response.fetchedAt;
     return response;
@@ -166,27 +167,25 @@ class FootballDataOrgProvider implements FootballDataProvider {
   }
 }
 
-function hasApiConfiguration() {
-  return Boolean(
-    process.env.FOOTBALL_API_URL &&
-      process.env.FOOTBALL_API_KEY &&
-      process.env.FOOTBALL_COMPETITION_ID,
-  );
-}
-
 async function loadFootballData(): Promise<FootballDataSnapshot> {
-  if (!hasApiConfiguration()) {
+  const configuration = getFootballApiConfiguration();
+
+  if (!configuration.apiKey) {
     return {
       matches: fallbackResults,
       tournamentWinner: fallbackTournamentWinner,
       lastUpdated: fallbackLastUpdated,
       source: "fallback",
-      warning: null,
+      warning:
+        "Live results are not configured. Add FOOTBALL_API_KEY to the deployment environment.",
     };
   }
 
   try {
-    const provider = new FootballDataOrgProvider();
+    const provider = new FootballDataOrgProvider(
+      buildMatchesUrl(configuration.apiUrl, configuration.competitionId),
+      configuration.apiKey,
+    );
     const [matches, tournamentWinner] = await Promise.all([
       provider.getMatches(),
       provider.getTournamentWinner(),
@@ -217,8 +216,8 @@ const getLiveFootballData = unstable_cache(
   loadFootballData,
   [
     "football-data-snapshot-live",
-    process.env.FOOTBALL_API_URL ?? "fallback",
-    process.env.FOOTBALL_COMPETITION_ID ?? "none",
+    process.env.FOOTBALL_API_URL ?? DEFAULT_FOOTBALL_API_URL,
+    process.env.FOOTBALL_COMPETITION_ID ?? DEFAULT_FOOTBALL_COMPETITION_ID,
   ],
   { revalidate: 60 },
 );
@@ -227,8 +226,8 @@ const getStandardFootballData = unstable_cache(
   loadFootballData,
   [
     "football-data-snapshot-standard",
-    process.env.FOOTBALL_API_URL ?? "fallback",
-    process.env.FOOTBALL_COMPETITION_ID ?? "none",
+    process.env.FOOTBALL_API_URL ?? DEFAULT_FOOTBALL_API_URL,
+    process.env.FOOTBALL_COMPETITION_ID ?? DEFAULT_FOOTBALL_COMPETITION_ID,
   ],
   { revalidate: 1800 },
 );
