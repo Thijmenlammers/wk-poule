@@ -1,0 +1,42 @@
+const countryCodes: Record<string, string> = {
+  Argentina: "ar",
+  Australia: "au",
+  Belgium: "be",
+  Brazil: "br",
+  "Cape Verde": "cv",
+  Colombia: "co",
+  Croatia: "hr",
+  Czechia: "cz",
+  "DR Congo": "cd",
+  Egypt: "eg",
+  England: "gb-eng",
+  France: "fr",
+  Germany: "de",
+  Ghana: "gh",
+  Iran: "ir",
+  Iraq: "iq",
+  Japan: "jp",
+  Mexico: "mx",
+  Netherlands: "nl",
+  "New Zealand": "nz",
+  Norway: "no",
+  Panama: "pa",
+  Paraguay: "py",
+  Portugal: "pt",
+  "Saudi Arabia": "sa",
+  Senegal: "sn",
+  "South Africa": "za",
+  "South Korea": "kr",
+  Spain: "es",
+  Sweden: "se",
+  Tunisia: "tn",
+  Turkey: "tr",
+  "United States": "us",
+  Uruguay: "uy",
+  Uzbekistan: "uz",
+};
+
+export function getTeamFlagCode(teamName: string | null) {
+  if (!teamName) return "xx";
+  return countryCodes[teamName] ?? "xx";
+}
