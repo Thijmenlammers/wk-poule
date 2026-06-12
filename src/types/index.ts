@@ -45,8 +45,8 @@ export interface PoolMatchWithResult extends PoolMatch {
 export interface FootballDataSnapshot {
   matches: NormalizedMatchResult[];
   tournamentWinner: string | null;
-  lastUpdated: string;
-  source: "api" | "fallback";
+  lastUpdated: string | null;
+  source: "api" | "stale" | "unavailable";
   warning: string | null;
 }
 

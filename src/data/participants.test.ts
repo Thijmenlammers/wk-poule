@@ -4,7 +4,7 @@ import { participants } from "@/data/participants";
 import { poolMatches } from "@/data/pool-matches";
 
 const APPROVED_PREDICTIONS_SHA256 =
-  "903bdc37e3ecfa211bf8c103eab3e363cb12a6d5ba429e124fe8256380da9108";
+  "4700afffe05638134d8069dadf35a8f7e583570f4b2c4650653e808f67b210dc";
 
 const participantNames = [
   "Willem",
@@ -85,6 +85,10 @@ describe("digitized participant data", () => {
 
   it("preserves the overwritten scores accepted during review", () => {
     expect(getPrediction("p05", 5)).toMatchObject({
+      predictedHomeScore: 1,
+      predictedAwayScore: 0,
+    });
+    expect(getPrediction("p08", 5)).toMatchObject({
       predictedHomeScore: 1,
       predictedAwayScore: 0,
     });

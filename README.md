@@ -22,7 +22,8 @@ npm run lint
 npm run build
 ```
 
-Without API credentials the application intentionally uses the bundled demo results.
+Without API credentials the application shows no match results and awards no
+match points.
 
 ## Prediction data
 
@@ -79,7 +80,16 @@ variables shown in `.env.example`. The provider loads:
 
 - `/competitions/{competitionId}/matches` for fixtures, status, live/full-time scores, kick-off times, and the season winner
 
-The matches and winner state share one upstream request. API responses are normalized to the application types and cached server-side. On selected pool match days data revalidates every 60 seconds. Outside match days it revalidates every 30 minutes. Routes render on demand, so builds do not consume API quota, and there is no browser polling.
+The matches and winner state share one upstream request. Successful API
+responses are normalized and stored in Next.js's persistent server-side data
+cache for five minutes. Routes render on demand, so builds do not consume API
+quota, and there is no browser polling.
+
+When a refresh fails because of a rate limit or temporary provider outage,
+Next.js keeps serving the last successful snapshot and retries revalidation in
+the background. The UI marks that snapshot as `Last known results` and tells
+the user that results are currently not updating. Failed responses are never
+written into the cache.
 
 ### External match IDs
 
@@ -97,17 +107,12 @@ An external ID always wins. This matters because several dates printed on the ph
 
 `src/lib/team-normalization.ts` maps common English, Dutch, and API aliases such as `Czech Republic`/`Czechia`, `Türkiye`/`Turkey`, `USA`/`United States`, and `Korea Republic`/`South Korea`. English names remain canonical inside the application.
 
-## Fallback results
+## Unavailable results
 
-`src/data/fallback-results.ts` contains a development snapshot with finished, live, and upcoming matches. It keeps the site usable when:
-
-- API credentials have not been configured
-- the provider is temporarily unavailable
-- the API rate limit is reached
-
-When a configured API fails, the UI displays: `Live results are temporarily unavailable. Showing the latest saved data.`
-
-Replace the fallback scores and timestamp with a newer saved snapshot before production if offline continuity is important.
+If no successful response has ever been cached, the application displays no
+match results and clearly reports that live results are unavailable. It never
+substitutes invented scores. Once the provider succeeds, that real snapshot
+becomes the saved fallback for subsequent outages.
 
 ## Scoring
 

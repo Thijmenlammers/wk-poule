@@ -54,7 +54,9 @@ export default async function HomePage() {
           <div className="hidden md:block">
             <dt className="text-slate-400">Updated</dt>
             <dd className="mt-1 font-medium text-slate-800">
-              {formatLastUpdated(footballData.lastUpdated)}
+              {footballData.lastUpdated
+                ? formatLastUpdated(footballData.lastUpdated)
+                : "No saved update"}
             </dd>
           </div>
         </dl>

@@ -2,29 +2,22 @@ import { AlertTriangle, Database } from "lucide-react";
 
 type DataNoticeProps = {
   warning: string | null;
-  source: "api" | "fallback";
+  source: "api" | "stale" | "unavailable";
 };
 
 export function DataNotice({ warning, source }: DataNoticeProps) {
-  if (!warning && source !== "fallback") return null;
+  if (!warning && source === "api") return null;
 
   return (
     <div
-      className={`flex items-start gap-2 border-l-2 px-3 py-2.5 text-sm ${
-        warning
-          ? "border-amber-500 bg-amber-50 text-amber-900"
-          : "border-[#e1592a] bg-white text-slate-600"
-      }`}
+      className="flex items-start gap-2 border-l-2 border-amber-500 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
     >
-      {warning ? (
+      {source === "unavailable" ? (
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
       ) : (
-        <Database className="mt-0.5 h-4 w-4 shrink-0 text-[#e1592a]" />
+        <Database className="mt-0.5 h-4 w-4 shrink-0" />
       )}
-      <p>
-        {warning ??
-          "Using the saved demo result set. Participant predictions remain unchanged."}
-      </p>
+      <p>{warning ?? "Live results are currently not updating."}</p>
     </div>
   );
 }

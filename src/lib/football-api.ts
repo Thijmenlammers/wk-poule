@@ -3,16 +3,15 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import {
-  fallbackLastUpdated,
-  fallbackResults,
-  fallbackTournamentWinner,
-} from "@/data/fallback-results";
-import { poolMatches } from "@/data/pool-matches";
-import {
   DEFAULT_FOOTBALL_API_URL,
   DEFAULT_FOOTBALL_COMPETITION_ID,
   getFootballApiConfiguration,
 } from "@/lib/football-api-config";
+import {
+  applySnapshotFreshness,
+  createUnavailableSnapshot,
+  FOOTBALL_DATA_REVALIDATE_SECONDS,
+} from "@/lib/football-data-state";
 import type {
   FootballDataSnapshot,
   MatchStatus,
@@ -76,14 +75,6 @@ async function requestFootballData(
     data: (await response.json()) as unknown,
     fetchedAt: new Date().toISOString(),
   };
-}
-
-function isPoolMatchDay() {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Amsterdam",
-  }).format(new Date());
-
-  return poolMatches.some((match) => match.date === today);
 }
 
 function normalizeStatus(status?: string): MatchStatus {
@@ -167,71 +158,57 @@ class FootballDataOrgProvider implements FootballDataProvider {
   }
 }
 
-async function loadFootballData(): Promise<FootballDataSnapshot> {
+async function fetchFootballData(): Promise<FootballDataSnapshot> {
   const configuration = getFootballApiConfiguration();
 
   if (!configuration.apiKey) {
-    return {
-      matches: fallbackResults,
-      tournamentWinner: fallbackTournamentWinner,
-      lastUpdated: fallbackLastUpdated,
-      source: "fallback",
-      warning:
-        "Live results are not configured. Add FOOTBALL_API_KEY to the deployment environment.",
-    };
+    throw new Error("FOOTBALL_API_KEY is not configured.");
+  }
+
+  const provider = new FootballDataOrgProvider(
+    buildMatchesUrl(configuration.apiUrl, configuration.competitionId),
+    configuration.apiKey,
+  );
+  const [matches, tournamentWinner] = await Promise.all([
+    provider.getMatches(),
+    provider.getTournamentWinner(),
+  ]);
+
+  return {
+    matches,
+    tournamentWinner,
+    lastUpdated: provider.lastUpdated ?? new Date().toISOString(),
+    source: "api",
+    warning: null,
+  };
+}
+
+const getCachedFootballData = unstable_cache(
+  fetchFootballData,
+  [
+    "football-data-snapshot-success-only-v1",
+    process.env.FOOTBALL_API_URL ?? DEFAULT_FOOTBALL_API_URL,
+    process.env.FOOTBALL_COMPETITION_ID ?? DEFAULT_FOOTBALL_COMPETITION_ID,
+  ],
+  { revalidate: FOOTBALL_DATA_REVALIDATE_SECONDS },
+);
+
+export const getFootballData = cache(async (): Promise<FootballDataSnapshot> => {
+  const configuration = getFootballApiConfiguration();
+
+  if (!configuration.apiKey) {
+    return createUnavailableSnapshot(
+      "Live results are not configured. Add FOOTBALL_API_KEY to the deployment environment.",
+    );
   }
 
   try {
-    const provider = new FootballDataOrgProvider(
-      buildMatchesUrl(configuration.apiUrl, configuration.competitionId),
-      configuration.apiKey,
-    );
-    const [matches, tournamentWinner] = await Promise.all([
-      provider.getMatches(),
-      provider.getTournamentWinner(),
-    ]);
-
-    return {
-      matches,
-      tournamentWinner,
-      lastUpdated: provider.lastUpdated ?? new Date().toISOString(),
-      source: "api",
-      warning: null,
-    };
+    return applySnapshotFreshness(await getCachedFootballData());
   } catch (error) {
     console.error("Unable to load football data:", error);
 
-    return {
-      matches: fallbackResults,
-      tournamentWinner: fallbackTournamentWinner,
-      lastUpdated: fallbackLastUpdated,
-      source: "fallback",
-      warning:
-        "Live results are temporarily unavailable. Showing the latest saved data.",
-    };
+    return createUnavailableSnapshot(
+      "Live results are currently unavailable and no successfully fetched data has been saved yet.",
+    );
   }
-}
-
-const getLiveFootballData = unstable_cache(
-  loadFootballData,
-  [
-    "football-data-snapshot-live",
-    process.env.FOOTBALL_API_URL ?? DEFAULT_FOOTBALL_API_URL,
-    process.env.FOOTBALL_COMPETITION_ID ?? DEFAULT_FOOTBALL_COMPETITION_ID,
-  ],
-  { revalidate: 60 },
-);
-
-const getStandardFootballData = unstable_cache(
-  loadFootballData,
-  [
-    "football-data-snapshot-standard",
-    process.env.FOOTBALL_API_URL ?? DEFAULT_FOOTBALL_API_URL,
-    process.env.FOOTBALL_COMPETITION_ID ?? DEFAULT_FOOTBALL_COMPETITION_ID,
-  ],
-  { revalidate: 1800 },
-);
-
-export const getFootballData = cache(async () =>
-  isPoolMatchDay() ? getLiveFootballData() : getStandardFootballData(),
-);
+});

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { formatLastUpdated } from "@/lib/formatting";
 
 type HeaderProps = {
-  lastUpdated: string;
-  source: "api" | "fallback";
+  lastUpdated: string | null;
+  source: "api" | "stale" | "unavailable";
 };
 
 export function Header({ lastUpdated, source }: HeaderProps) {
@@ -35,16 +35,26 @@ export function Header({ lastUpdated, source }: HeaderProps) {
           <span className="flex items-center justify-end gap-2 font-medium text-slate-600">
             <span
               className={`h-2 w-2 rounded-full ${
-                source === "api" ? "bg-emerald-500" : "bg-amber-500"
+                source === "api"
+                  ? "bg-emerald-500"
+                  : source === "stale"
+                    ? "bg-amber-500"
+                    : "bg-slate-400"
               }`}
             />
             <span className="hidden sm:inline">
-              {source === "api" ? "Live results" : "Demo results"}
+              {source === "api"
+                ? "Live results"
+                : source === "stale"
+                  ? "Last known results"
+                  : "Results unavailable"}
             </span>
           </span>
-          <span className="mt-0.5 hidden sm:block">
-            Updated {formatLastUpdated(lastUpdated)}
-          </span>
+          {lastUpdated ? (
+            <span className="mt-0.5 hidden sm:block">
+              Updated {formatLastUpdated(lastUpdated)}
+            </span>
+          ) : null}
         </div>
       </div>
     </header>
